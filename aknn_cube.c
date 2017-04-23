@@ -1409,11 +1409,11 @@ distance_1D(double a1, double a2, double b1, double b2)
 {
 	/* interval (a) is entirely on the left of (b) */
 	if ((a1 <= b1) && (a2 <= b1) && (a1 <= b2) && (a2 <= b2))
-		return (Min(b1, b2) - Max(a1, a2));
+		return (Max(b1, b2) - Min(a1, a2));
 
 	/* interval (a) is entirely on the right of (b) */
 	if ((a1 > b1) && (a2 > b1) && (a1 > b2) && (a2 > b2))
-		return (Min(a1, a2) - Max(b1, b2));
+		return (Max(a1, a2) - Min(b1, b2));
 
 	/* the rest are all sorts of intersections */
 	return (0.0);
