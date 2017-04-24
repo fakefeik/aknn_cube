@@ -96,6 +96,7 @@ bool		aknn_cube_contains_v0(NDBOX *a, NDBOX *b);
 bool		aknn_cube_overlap_v0(NDBOX *a, NDBOX *b);
 NDBOX	   *aknn_cube_union_v0(NDBOX *a, NDBOX *b);
 void		rt_aknn_cube_size(NDBOX *a, double *sz);
+void		rt_aknn_cube_perimeter(NDBOX *a, double *sz);
 NDBOX	   *g_aknn_cube_binary_union(NDBOX *r1, NDBOX *r2, int *sizep);
 bool		g_aknn_cube_leaf_consistent(NDBOX *key, NDBOX *query, StrategyNumber strategy);
 bool		g_aknn_cube_internal_consistent(NDBOX *key, NDBOX *query, StrategyNumber strategy);
@@ -420,6 +421,22 @@ g_aknn_cube_decompress(PG_FUNCTION_ARGS)
 	PG_RETURN_POINTER(entry);
 }
 
+static float
+pack_float(const float value, const int realm)
+{
+	union
+	{
+		float f;
+		struct { unsigned value:31, sign:1; } vbits;
+		struct { unsigned value:29, realm:2, sign:1; } rbits;
+	} a;
+
+	a.f = value;
+	a.rbits.value = a.vbits.value >> 2;
+	a.rbits.realm = realm;
+
+	return a.f;
+}
 
 /*
 ** The GiST Penalty method for boxes
@@ -441,14 +458,34 @@ g_aknn_cube_penalty(PG_FUNCTION_ARGS)
 	rt_aknn_cube_size(DatumGetNDBOX(origentry->key), &tmp2);
 	*result = (float) (tmp1 - tmp2);
 
-	/*
-	 * fprintf(stderr, "penalty\n"); fprintf(stderr, "\t%g\n", *result);
-	 */
+	/* Realm tricks are used only in case of IEEE754 support(IEC 60559) */
+
+	/* REALM 0: No extension is required, volume is zero, return edge	*/
+	/* REALM 1: No extension is required, return nonzero volume			*/
+	/* REALM 2: Volume extension is zero, return nonzero edge extension	*/
+	/* REALM 3: Volume extension is nonzero, return it					*/
+
+	if(*result == 0)
+	{
+		double tmp3 = tmp1; /* remember entry volume */
+		rt_aknn_cube_perimeter(ud, &tmp1);
+		rt_aknn_cube_perimeter(DatumGetNDBOX(origentry->key), &tmp2);
+		*result = (float) (tmp1 - tmp2);
+
+		*result = *result == 0
+			? tmp3 == 0
+				? pack_float(tmp1, 0) /* REALM 0 */
+				: pack_float(tmp3, 1) /* REALM 1 */
+			: pack_float(*result, 2); /* REALM 2 */
+	}
+	else
+	{
+		*result = pack_float(*result, 3); /* REALM 3 */
+	}
+
 
 	PG_RETURN_FLOAT8(*result);
 }
-
-
 
 /*
 ** The GiST PickSplit method for boxes
@@ -874,6 +911,22 @@ aknn_cube_size(PG_FUNCTION_ARGS)
 
 	PG_FREE_IF_COPY(a, 0);
 	PG_RETURN_FLOAT8(result);
+}
+
+void
+rt_aknn_cube_perimeter(NDBOX *a, double *size)
+{
+	int			i;
+
+	if (a == (NDBOX *) NULL)
+		*size = 0.0;
+	else
+	{
+		*size = 0.0;
+		for (i = 0; i < DIM(a); i++)
+			*size = (*size) + Abs(UR_COORD(a, i) - LL_COORD(a, i));
+	}
+	return;
 }
 
 void
