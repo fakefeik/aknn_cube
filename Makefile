@@ -1,14 +1,11 @@
-# contrib/cube/Makefile
+# contrib/aknn_cube/Makefile
 
-MODULE_big = cube
-OBJS= cube.o cubeparse.o $(WIN32RES)
+MODULE_big = aknn_cube
+OBJS= aknn_cube.o cubeparse.o $(WIN32RES)
 
-EXTENSION = cube
-DATA = cube--1.2.sql cube--1.1--1.2.sql cube--1.0--1.1.sql \
-	cube--unpackaged--1.0.sql
+EXTENSION = aknn_cube
+DATA = aknn_cube--1.0.sql
 PGFILEDESC = "cube - multidimensional cube data type"
-
-REGRESS = cube
 
 EXTRA_CLEAN = y.tab.c y.tab.h
 
@@ -19,7 +16,7 @@ PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 else
-subdir = contrib/cube
+subdir = contrib/aknn_cube
 top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
