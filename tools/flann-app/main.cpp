@@ -81,25 +81,13 @@ void makeSqlScript(Matrix<float> dataset, Matrix<float> query, const char *filen
     makeInsert(file, query, "query");
 }
 
-void prettyPrint(Matrix<float> data, const char *filename)
-{
-    ofstream file;
-    file.open(filename);
-    for (int i = 0; i < data.rows; i++)
-    {
-        for (int j = 0; j < data.cols; j++)
-            file << data[i][j] << ' ';
-        file << endl;
-    }
-}
-
 int main(int argc, char **argv)
 {
     int nn = 3;
     Matrix<float> dataset;
     Matrix<float> query;
-    load_from_file(dataset, "sift10K.h5","dataset");
-    load_from_file(query, "sift10K.h5","query");
+    load_from_file(dataset, "dataset.h5","dataset");
+    load_from_file(query, "dataset.h5","query");
 
     cout << "brute.time: " << timeit([&]() -> void { knnSearch("result.brute.hdf5", dataset, query, nn, LinearIndexParams()); }) << " s" << endl;
     cout << "brute.totalDistance: " << totalDistance("result.brute.hdf5", dataset, query, nn) << endl;
@@ -107,8 +95,6 @@ int main(int argc, char **argv)
     cout << "kdTree.time: " << timeit([&]() -> void { knnSearch("result.hdf5", dataset, query, nn, KDTreeIndexParams(4)); }) << " s" << endl;
     cout << "kdTree.totalDistance: " << totalDistance("result.hdf5", dataset, query, nn) << endl;
 
-    prettyPrint(dataset, "dataset.txt");
-    prettyPrint(query, "query.txt");
     makeSqlScript(dataset, query, "sift_to_postgres.sql");
 
     delete[] dataset.ptr();
