@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <functional>
+#include <math.h>
 
 #include <flann/flann.hpp>
 #include <flann/io/hdf5.h>
@@ -20,8 +21,8 @@ double distance(float *first, float *second, size_t len = 128)
 {
     auto dist = 0.0;
     for (auto i = 0; i < len; i++)
-        dist += abs(first[i] - second[i]);
-    return dist;
+        dist += (first[i] - second[i])*(first[i] - second[i]);
+    return sqrt(dist);
 }
 
 double totalDistance(string resultFile, Matrix<float> dataset, Matrix<float> query, int nNeighbours)
@@ -45,7 +46,7 @@ void knnSearch(string filename, Matrix<float> data, Matrix<float> query, int nNe
     Index<L2<float>> index(data, params);
     index.buildIndex();
 
-    index.knnSearch(query, indices, dists, nNeighbours, SearchParams(128));
+    index.knnSearch(query, indices, dists, nNeighbours, SearchParams(0));
     save_to_file(indices, filename, "result");
 
     delete[] indices.ptr();
@@ -58,17 +59,20 @@ void makeInsert(ofstream &file, Matrix<float> data, string table)
 
 DROP TABLE IF EXISTS )" + table + R"(;
 
-CREATE TABLE )" + table + R"( AS
-    SELECT cube(vector) AS c FROM (VALUES
+CREATE TABLE )" + table + R"( (
+    v integer[]
+);
+
+INSERT INTO )" + table + R"( VALUES
 )";
 
     file << sql;
     for (int i = 0; i < data.rows; i++)
     {
-        file << "\t\t(array[";
+        file << "('{";
         for (int j = 0; j < data.cols - 1; j++)
-            file << data[i][j] << ", ";
-        file << data[i][data.cols - 1] << "])" << ((i == data.rows - 1) ? "\n\t) vectors(vector);" : ",") << endl;
+            file << data[i][j] << ",";
+        file << data[i][data.cols - 1] << "}')" << ((i == data.rows - 1) ? ";" : ",") << endl;
     }
 }
 
@@ -83,7 +87,7 @@ void makeSqlScript(Matrix<float> dataset, Matrix<float> query, const char *filen
 
 int main(int argc, char **argv)
 {
-    int nn = 3;
+    int nn = 1;
     Matrix<float> dataset;
     Matrix<float> query;
     load_from_file(dataset, "dataset.h5","dataset");

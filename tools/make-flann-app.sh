@@ -21,6 +21,6 @@ if [ ! -f $dataset_name ]; then
     wget $datasets_link$dataset_name
 fi
 
-mv $dataset_name dataset.h5
+cp $dataset_name dataset.h5
 
 ./flann-app
